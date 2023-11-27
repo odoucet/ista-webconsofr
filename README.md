@@ -15,6 +15,8 @@ This repository also provides Grafana dashboard compatible with the implementati
 To launch on localhost:
 ```
 docker compose up -d
+# crawl to http://localhost:3000
+```
 
 Overview
 ---------
