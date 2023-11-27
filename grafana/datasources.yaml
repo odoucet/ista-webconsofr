@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+- name: SQLite
+  uid: c5c4fafd-4e02-4c41-8928-847514b67a10
+  type: frser-sqlite-datasource
+  access: proxy
+  isDefault: true
+  editable: true
+  jsonData:
+      path: /sqlite/ista.sqlite

@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  grafana:
+    # Image Ubuntu is required for sqlite libs to work, or you'll get error "unable to open database file: out of memory (14)"
+    image: grafana/grafana:latest-ubuntu
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/grafana-dashboard.json:/var/lib/grafana/dashboards/grafana-dashboard.json:ro
+      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - ./grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./ista.sqlite:/sqlite/ista.sqlite
+    environment:
+      - GF_INSTALL_PLUGINS=frser-sqlite-datasource
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ORG_ID=1
+
+volumes:
+  grafana-data:
