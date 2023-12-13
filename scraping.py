@@ -6,6 +6,14 @@ import sqlite3
 import pickle
 from datetime import datetime, timedelta
 
+# for weather data
+import time
+import openmeteo_requests
+import requests_cache
+import pandas as pd
+from retry_requests import retry
+
+
 def read_config(file_path):
     """
     Lit le fichier de configuration YAML et renvoie les données.
@@ -91,6 +99,10 @@ else:
         "date int, numeroPointComptage int, bruteAvecPonderationDju real, bruteSansPonderationDju real, corrigeeAvecPonderationDju real, corrigeeSansPonderationDju real, "+
         "indexDernierJourPeriode real, bruteValeurDju real, corrigeeValeurDju real, PRIMARY KEY(date, numeroPointComptage))"
     )
+    cursor.execute(
+        "CREATE TABLE historyTemperature "+
+        "(date int, temperatureMax real, temperatureMin real, temperatureMean real, PRIMARY KEY(date))"
+    )
     conn.commit()
 
 # Get last date in table consommationChauffage
@@ -166,3 +178,59 @@ while start_time < end_time:
     # iterate
     start_time += timedelta(days=1)
 
+# Grab weather data
+# Setup the Open-Meteo API client with cache and retry on error
+cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
+retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
+openmeteo = openmeteo_requests.Client(session = retry_session)
+
+print(f"Fetching weather data from {start_time.strftime('%Y-%m-%d')} to {end_time.strftime('%Y-%m-%d')}")
+
+url = "https://archive-api.open-meteo.com/v1/archive"
+params = {
+	"latitude": config['location']['latitude'],
+	"longitude": config['location']['longitude'],
+	"start_date": start_time.strftime('%Y-%m-%d'),
+	"end_date": end_time.strftime('%Y-%m-%d'),
+	"daily": ["temperature_2m_max", "temperature_2m_min", "temperature_2m_mean"]
+}
+
+responses = openmeteo.weather_api(url, params=params)
+
+# Process first location. Add a for-loop for multiple locations or weather models
+response = responses[0]
+
+# Process daily data. The order of variables needs to be the same as requested.
+daily = response.Daily()
+daily_temperature_2m_max = daily.Variables(0).ValuesAsNumpy()
+daily_temperature_2m_min = daily.Variables(1).ValuesAsNumpy()
+daily_temperature_2m_mean = daily.Variables(2).ValuesAsNumpy()
+
+daily_data = {"date": pd.date_range(
+	start = pd.to_datetime(daily.Time(), unit = "s"),
+	end = pd.to_datetime(daily.TimeEnd(), unit = "s"),
+	freq = pd.Timedelta(seconds = daily.Interval()),
+	inclusive = "left"
+)}
+daily_data["temperature_2m_max"] = daily_temperature_2m_max
+daily_data["temperature_2m_min"] = daily_temperature_2m_min
+daily_data["temperature_2m_mean"] = daily_temperature_2m_mean
+
+daily_dataframe = pd.DataFrame(data = daily_data)
+# for each day, insert into database
+
+for index, row in daily_dataframe.iterrows():
+    # if NaT skip
+    if pd.isnull(row['temperature_2m_max']):
+        continue
+
+    cursor.execute(
+        "INSERT INTO historyTemperature VALUES (?, ?, ?, ?)",
+        (
+            int(row['date'].timestamp()),
+            row['temperature_2m_max'],
+            row['temperature_2m_min'],
+            row['temperature_2m_mean']
+        )
+    )
+    conn.commit()

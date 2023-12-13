@@ -18,6 +18,21 @@ docker compose up -d
 # crawl to http://localhost:3000
 ```
 
+Config file
+-----------
+
+Create a `configuration.yaml` file with the following content:
+```
+ista_webconso:
+  login: "xxx@xxx.fr"
+  pwd: "xxxxxxx"
+
+# where is your home ? to get weather temperature history.
+location:
+  latitude: 48.8939
+  longitude: 2.2886
+```
+
 Overview
 ---------
 

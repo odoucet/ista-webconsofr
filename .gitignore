@@ -1,3 +1,4 @@
 session.cache
+.cache.sqlite
 ista.sqlite
 configuration.yaml
