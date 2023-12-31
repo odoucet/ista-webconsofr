@@ -184,6 +184,16 @@ cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
 retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
 openmeteo = openmeteo_requests.Client(session = retry_session)
 
+# Get last date in table consommationChauffage
+cursor = conn.cursor()
+cursor.execute("SELECT MAX(date) FROM historyTemperature")
+last_date = cursor.fetchone()[0]
+if last_date:
+    # last_date is unix timestamp. add 86400 and convert it to datetime
+    start_time = datetime.fromtimestamp(last_date) + timedelta(days=1)
+else:
+    start_time = datetime(2022, 11, 25)
+
 print(f"Fetching weather data from {start_time.strftime('%Y-%m-%d')} to {end_time.strftime('%Y-%m-%d')}")
 
 url = "https://archive-api.open-meteo.com/v1/archive"
@@ -223,6 +233,8 @@ for index, row in daily_dataframe.iterrows():
     # if NaT skip
     if pd.isnull(row['temperature_2m_max']):
         continue
+
+    print(f"{row['date'].strftime('%Y-%m-%d')}: max = {row['temperature_2m_max']:5.2f} ; min = {row['temperature_2m_min']:5.2f} ; mean = {row['temperature_2m_mean']:5.2f}")
 
     cursor.execute(
         "INSERT INTO historyTemperature VALUES (?, ?, ?, ?)",
