@@ -24,8 +24,9 @@ Config file
 Create a `configuration.yaml` file with the following content:
 ```
 ista_webconso:
-  login: "xxx@xxx.fr"
-  pwd: "xxxxxxx"
+  cookie:
+    JSESSIONID: xxx
+    SRV: hmeprdweb01"
 
 # where is your home ? to get weather temperature history.
 location:

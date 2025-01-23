@@ -21,34 +21,34 @@ def read_config(file_path):
     with open(file_path, 'r') as file:
         return yaml.safe_load(file)
 
-def login(login_url, login_data):
-    """
-    Connectez-vous à login_url avec les identifiants fournis.
-    Gère les redirections automatiquement.
-    Retourne une session contenant les cookies de connexion.
-    """
+# def login(login_url, login_data):
+#     """
+#     Connectez-vous à login_url avec les identifiants fournis.
+#     Gère les redirections automatiquement.
+#     Retourne une session contenant les cookies de connexion.
+#     """
 
-    # if file session.txt exist and is less than an hour old, restore session from it:
-    if (os.path.exists("session.cache")):
-        file_time = os.path.getmtime("session.cache")
-        if (datetime.now() - datetime.fromtimestamp(file_time)).total_seconds() < 3600:
-            with open("session.cache", 'rb') as file:
-                session = requests.Session()
-                session.cookies.update(pickle.load(file))
-                return session
+#     # if file session.txt exist and is less than an hour old, restore session from it:
+#     if (os.path.exists("session.cache")):
+#         file_time = os.path.getmtime("session.cache")
+#         if (datetime.now() - datetime.fromtimestamp(file_time)).total_seconds() < 3600:
+#             with open("session.cache", 'rb') as file:
+#                 session = requests.Session()
+#                 session.cookies.update(pickle.load(file))
+#                 return session
 
-    session = requests.Session()
-    response = session.post(login_url, data=login_data, allow_redirects=True)
+#     session = requests.Session()
+#     response = session.post(login_url, data=login_data, allow_redirects=True)
 
-    if response.status_code != 200:
-        print(f"Erreur lors de la connexion : {response.status_code}")
-        return None
+#     if response.status_code != 200:
+#         print(f"Erreur lors de la connexion : {response.status_code}")
+#         return None
 
-    # write session to cache file
-    with open("session.cache", 'wb') as file:
-        pickle.dump(session.cookies, file)
+#     # write session to cache file
+#     with open("session.cache", 'wb') as file:
+#         pickle.dump(session.cookies, file)
 
-    return session
+#     return session
 
 def fetch_data(session, target_url_base, date):
     formatted_date = date.strftime("%Y-%m-%d")
@@ -71,7 +71,7 @@ def fetch_data(session, target_url_base, date):
 
 # Utilisation des fonctions
 config = read_config('configuration.yaml')
-login_url = 'https://ista-webconso.fr/espace-client-v2/public/login.do?dispatch=login'
+login_url = 'https://login.ista.com/realms/dsp-webconso-fr/protocol/openid-connect/auth?client_id=dsp-webconso-fr&response_type=code'
 target_url_base = 'https://ista-webconso.fr/espace-client-v2/occupant/ficheLogement.do?dispatch=calculeConsommationChauffageRfcPourLogement'
 login_data = {
     "user": "ista",
@@ -120,7 +120,14 @@ else:
 end_time = datetime.now() - timedelta(days=1)
 
 # Connexion
-session = login(login_url, login_data)
+if not config['ista_webconso']['cookie']:
+    # session = login(login_url, login_data)
+    print("Sorry, login no longer working. Login manually on website and copy cookie on configuration.yaml")
+    sys.exit(1)
+
+session = requests.Session()
+session.cookies.update(config['ista_webconso']['cookie'])
+
 
 # Dictionnaire des pointsComptage déjà insérés
 pointsComptageDone = {}
